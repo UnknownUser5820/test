@@ -5,10 +5,7 @@ const http = require('http');
 const crypto = require('crypto');
 const assert = require('assert');
 const zlib = require('zlib');
-const express = require('express');
-const WebSocket = require("ws");
 const { URL } = require('url');
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
 // Manual constants
 const ALLOWED_METHODS = http.METHODS;
@@ -16,10 +13,6 @@ const ALLOWED_PROTOS = ['http', 'https'];
 const ALLOWED_GZIP_METHODS = ['transform', 'decode', 'append'];
 const DEFAULT_PROTO = 'https';
 const DEFAULT_USERAGENT = 'Mozilla';
-
-const ws = new WebSocket("wss://gateway.discord.gg/?v=6&encoding=json")
-const app = express();
-const ChatTables2 = {}
 
 const getHosts = (hosts) => {
   if (!hosts) {
@@ -50,7 +43,7 @@ const REWRITE_ACCEPT_ENCODING = process.env.REWRITE_ACCEPT_ENCODING === 'true';
 const APPEND_HEAD = process.env.APPEND_HEAD === 'true';
 const ALLOWED_HOSTS = getHosts(process.env.ALLOWED_HOSTS);
 const GZIP_METHOD = process.env.GZIP_METHOD;
-const token = process.env.token
+
 assert.ok(ACCESS_KEY, 'Missing ACCESS_KEY');
 assert.ok(ALLOWED_GZIP_METHODS.includes(GZIP_METHOD), `GZIP_METHOD must be one of the following values: ${JSON.stringify(ALLOWED_GZIP_METHODS)}`);
 
@@ -287,64 +280,6 @@ server.on('request', (req, res) => {
   } else {
     writeErr(res, 400, 'proxy-access-key and proxy-target headers are both required');
   }
-});
-
-payload = {
-  op: 2,
-  d: {
-    token: token,
-    intents: 513,
-    properties: {
-      $os: "windows",
-      $browser: "chrome",
-      $device: "pc"
-    }
-  }
-}
-
-ws.on("open", function open() {
-  ws.send(JSON.stringify(payload))
-})
-
-ws.on("message", function incoming(data) {
-  let payload = JSON.parse(data)
-  const { t, event, op, d } = payload
-
-  switch (op) {
-    case 10:
-      const { heartbeat_interval } = d
-      interval = heartbeat(heartbeat_interval)
-      break;
-  };
-  switch (t) {
-    case "MESSAGE_CREATE":
-      let author = d.author.username;
-      let content = d.content;
-      ChatTables2[d.id] = d
-      console.log(author+": "+content)
-      //console.log(ChatTables2)
-  }
-})
-
-app.get('/test', async (request, response) => {
-  response.status(200).send("Websocks is online");
-});
-
-app.get(`/grab-messages`, async (request, response) => {
-  // ws.send(JSON.stringify({ op: 1, d: null }))
-  response.status(200).send(ChatTables2)
-})
-
-const heartbeat = (ms) => {
-  return setInterval(() => {
-    ws.send(JSON.stringify({ op: 1, d: null }))
-  }, ms)
-}
-let listener = app.listen(PORT, () => {
-  //ws.send(JSON.stringify({ op: 1, d: null }))
-  console.log(`Your app is currently listening on port: ${listener.address().port}`
-  );
-  //console.log(new Date())
 });
 
 server.listen(PORT, (err) => {
